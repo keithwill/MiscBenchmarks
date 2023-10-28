@@ -21,9 +21,9 @@ namespace Test
         [Params(10, 1000)]
         public int Count { get; set; }
 
-        private List<MyType> _data = new();
+        JsonSerializerOptions options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-        private JsonSerializerOptions _options;
+        private List<MyType> _data = new();
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -31,34 +31,7 @@ namespace Test
             for (int i = 0; i < Count; i++)
             {
                 _data.Add(new MyType($"SomeName{i}", i));
-                _options = new JsonSerializerOptions { WriteIndented = false };
             }
-        }
-
-        [Benchmark]
-        public long SerializeAndDeserializeSTJ()
-        {
-            long total = 0;
-
-            foreach (var item in _data)
-            {
-                total += SystemTextJson(item);
-            }
-
-            return total;
-        }
-
-        [Benchmark]
-        public long SerializeAndDeserializeSTJCachedOptions()
-        {
-            long total = 0;
-
-            foreach (var item in _data)
-            {
-                total += SystemTextJson(item, _options);
-            }
-
-            return total;
         }
 
         [Benchmark]
@@ -75,28 +48,13 @@ namespace Test
         }
 
         [Benchmark]
-        public long SerializeAndDeserializeSTJCaseInsensitive()
+        public long SerializeAndDeserializeSTJ()
         {
             long total = 0;
-            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             foreach (var item in _data)
             {
-                total += SystemTextJson(item, opts);
-            }
-
-            return total;
-        }
-
-        [Benchmark]
-        public long SerializeAndDeserializeSTJCaseInsensitiveSourceGen()
-        {
-            long total = 0;
-            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-            foreach (var item in _data)
-            {
-                total += SystemTextJsonSourceGen(item, opts);
+                total += SystemTextJson(item, options);
             }
 
             return total;
@@ -106,7 +64,7 @@ namespace Test
         public long SerializeAndDeserializeNewtonsoft()
         {
             long total = 0;
-
+            
             foreach (var item in _data)
             {
                 total += NewtonsoftJson(item);
@@ -115,17 +73,17 @@ namespace Test
             return total;
         }
 
-        static int SystemTextJsonSourceGen(MyType m, JsonSerializerOptions opts = null)
+        static int SystemTextJsonSourceGen(MyType m)
         {
-            var s = JsonSerializer.Serialize(m, typeof(MyType), SourceGenerationContext.Default);
-            var r = JsonSerializer.Deserialize<MyType>(s, SourceGenerationContext.Default.MyType)!;
+            var s = JsonSerializer.SerializeToUtf8Bytes(m, SourceGenerationContext.Default.MyType);
+            var r = JsonSerializer.Deserialize(s, SourceGenerationContext.Default.MyType)!;
             return r.Age;
         }
 
-        static int SystemTextJson(MyType m, JsonSerializerOptions opts = null)
+        static int SystemTextJson(MyType m, JsonSerializerOptions options)
         {
-            var s = JsonSerializer.Serialize(m, opts);
-            var r = JsonSerializer.Deserialize<MyType>(s, opts)!;
+            var s = JsonSerializer.SerializeToUtf8Bytes(m, options);
+            var r = JsonSerializer.Deserialize<MyType>(s, options)!;
             return r.Age;
         }
 
